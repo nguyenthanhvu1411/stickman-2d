@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "shots": [
+    {"end_ms": 8000, "event_ms": 1400, "label": "Ý tưởng nhỏ", "pose": "point"},
+    {"end_ms": 16000, "event_ms": 9400, "label": "Minh họa", "pose": "idle", "theme": "mint"},
+    {"end_ms": 24000, "event_ms": 17400, "label": "Từ khóa", "pose": "point"},
+    {"end_ms": 32000, "event_ms": 25400, "label": "Chia sẻ", "pose": "idle", "theme": "mint"}
+  ]
+}

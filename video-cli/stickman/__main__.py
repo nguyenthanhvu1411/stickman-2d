@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 
 def check_tools(font_path):
@@ -48,48 +47,6 @@ def check_tools(font_path):
     return font
 
 
-def render_demo(output, font):
-    import skia
-
-    from . import scene
-
-    output = output.resolve()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    surface = skia.Surface(scene.WIDTH, scene.HEIGHT)
-    with TemporaryDirectory(prefix=".render-", dir=output.parent) as temp:
-        draft = Path(temp) / "demo.mp4"
-        log_path = Path(temp) / "ffmpeg.log"
-        command = [
-            "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin",
-            "-f", "rawvideo", "-pixel_format", "bgra",
-            "-video_size", f"{scene.WIDTH}x{scene.HEIGHT}",
-            "-framerate", str(scene.FPS), "-i", "pipe:0",
-            "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-movflags", "+faststart", str(draft),
-        ]
-        with log_path.open("wb") as log, subprocess.Popen(
-            command, stdin=subprocess.PIPE, stderr=log
-        ) as encoder:
-            pipe_closed_early = False
-            try:
-                with encoder.stdin as pipe:
-                    for frame in range(scene.FRAME_COUNT):
-                        scene.draw_scene(surface.getCanvas(), frame, font)
-                        image = surface.makeImageSnapshot()
-                        pixels = image.toarray(colorType=skia.ColorType.kBGRA_8888_ColorType)
-                        pipe.write(memoryview(pixels).cast("B"))
-            except BrokenPipeError:
-                pipe_closed_early = True
-            except BaseException:
-                encoder.terminate()
-                raise
-            if encoder.wait() or pipe_closed_early:
-                details = log_path.read_text(encoding="utf-8", errors="replace").strip()
-                raise RuntimeError(f"FFmpeg xuất video thất bại (mã {encoder.returncode}). {details}")
-        draft.replace(output)
-    print(f"Đã xuất {output}")
-
-
 def main():
     parser = argparse.ArgumentParser(description="Stickman 2D CLI")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -98,12 +55,25 @@ def main():
     for command in (doctor, render):
         command.add_argument("--font", type=Path, help="Đường dẫn font TTF/OTF thay thế")
     render.add_argument("--output", type=Path, default=Path("out/demo.mp4"))
+    from .pipeline import add_commands
+
+    add_commands(commands)
     args = parser.parse_args()
     try:
-        font = check_tools(args.font)
-        if args.command == "render-demo":
-            render_demo(args.output, font)
-    except (OSError, RuntimeError) as error:
+        if args.command == "plan":
+            args.run(args, None)
+        else:
+            font = check_tools(args.font)
+            if args.command == "render-demo":
+                from . import scene
+                from .encoder import encode
+
+                encode(args.output, scene.WIDTH, scene.HEIGHT, scene.FRAME_COUNT,
+                       lambda canvas, frame: scene.draw_scene(canvas, frame, font))
+                print(f"Đã xuất {args.output.resolve()}")
+            elif args.command != "doctor":
+                args.run(args, font)
+    except (OSError, RuntimeError, ValueError) as error:
         print(error, file=sys.stderr)
         return 1
     except KeyboardInterrupt:
