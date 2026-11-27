@@ -50,7 +50,7 @@ def make_timeline(args):
         if not isinstance(data, dict) or data.get("schema_version") != 1:
             raise ValueError("story.json cần schema_version = 1.")
         shots = data.get("shots")
-        source = "manual"
+        source = getattr(args, "timing_source", "manual")
     else:
         lengths = [max(1, len(line.split())) for line in lines]
         total = sum(lengths)
@@ -116,10 +116,11 @@ def subtitles(shots):
     return "\n\n".join(cues) + "\n"
 
 
-def draw_frame(canvas, shot, local_frame, font, scale):
+def draw_frame(canvas, shot, local_frame, font, scale, offset_y=0):
     from .scene import draw_scene
 
     canvas.save()
+    canvas.translate(0, offset_y)
     canvas.scale(scale, scale)
     trigger = (frame_at(shot["event_ms"]) - frame_at(shot["start_ms"])) / FPS
     draw_scene(canvas, local_frame, font, shot["label"], trigger, shot["pose"], shot["theme"])
@@ -167,6 +168,10 @@ def render(args, font):
     timeline = make_timeline(args)
     shots = timeline["shots"]
     width, height = (1280, 720) if args.resolution == 720 else (1920, 1080)
+    if getattr(args, "portrait", False):
+        width, height = height, width
+    scale = width / scene.WIDTH
+    offset_y = (height - scene.HEIGHT * scale) / 2
     args.output.mkdir(parents=True, exist_ok=True)
     cache = args.output / "shots_cache"
     cache.mkdir(exist_ok=True)
@@ -196,7 +201,7 @@ def render(args, font):
                 raise ValueError(f"{shot['id']}: font thiếu ký tự {''.join(missing)}.")
             print(f"Render {shot['id']}")
             encode(clip, width, height, count,
-                   lambda canvas, frame: draw_frame(canvas, shot, frame, font, width / 1280))
+                   lambda canvas, frame: draw_frame(canvas, shot, frame, font, scale, offset_y))
         else:
             print(f"Dùng cache {shot['id']}")
         clips.append(clip)
@@ -238,7 +243,11 @@ def finish(args, timeline, clips, font_path):
             except OSError:
                 shutil.copyfile(clip, target)
         (work / "clips.txt").write_text("".join(f"file scene{i}.mp4\n" for i in range(len(clips))), encoding="ascii")
-        (work / "master.srt").write_text(subtitles(timeline["shots"]), encoding="utf-8")
+        provided_srt = getattr(args, "srt", None)
+        if provided_srt:
+            shutil.copyfile(provided_srt, work / "master.srt")
+        else:
+            (work / "master.srt").write_text(subtitles(timeline["shots"]), encoding="utf-8")
         command = ["ffmpeg", "-nostdin", "-hide_banner", "-v", "error", "-f", "concat", "-safe", "1",
                    "-i", "clips.txt", "-i", str(args.voice.resolve())]
         if args.music:
@@ -329,6 +338,7 @@ def add_commands(commands):
             parser.add_argument("--font", type=Path)
         if name in ("render", "resume"):
             parser.add_argument("--resolution", choices=(720, 1080), type=int, default=720)
+            parser.add_argument("--portrait", action="store_true")
             parser.add_argument("--music", type=Path)
             parser.add_argument("--no-sfx", action="store_true")
             parser.add_argument("--no-subtitles", action="store_true")
