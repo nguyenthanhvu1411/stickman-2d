@@ -1,11 +1,11 @@
 # Stickman 2D
 
-Repo gồm game **Stickman Rooftops** và CLI tạo video mẫu bằng Python.
+Repo gồm game **Stickman Rooftops** và CLI dựng video từ kịch bản và giọng thu bằng Python.
 
 | Tính năng | Chạy ở đâu | Điểm bắt đầu |
 | --- | --- | --- |
 | Chơi game Stickman Rooftops | Trình duyệt qua GitHub Pages | [Chơi trên web](#chơi-trên-web) |
-| Tạo và chỉnh cảnh video mẫu | Windows hoặc Linux | [Hướng dẫn CLI video](video-cli/README.md) |
+| Tạo video từ kịch bản và giọng thu | Windows hoặc Linux | [Hướng dẫn CLI video](video-cli/README.md) |
 
 ## Chơi trên web
 
@@ -44,7 +44,7 @@ File kết quả là `out/demo.mp4` bên trong `video-cli`. Mở file bằng `st
 Để chỉnh video mẫu, sửa biến `TITLE` hoặc hàm `draw_scene` trong
 [`video-cli/stickman/scene.py`](video-cli/stickman/scene.py), sau đó chạy lại `render-demo`.
 Có thể đổi file đích bằng `render-demo --output out/canh-moi.mp4`.
-CLI hiện tạo một cảnh mẫu cố định bằng Skia và FFmpeg. Phần render/chỉnh video chạy cục bộ.
+Để dựng video nhiều cảnh, dùng các lệnh `plan`, `stills`, `render` và `resume` theo [hướng dẫn CLI video](video-cli/README.md#dựng-video-từ-kịch-bản-và-giọng-thu). Phần render/chỉnh video chạy cục bộ.
 GitHub Pages phục vụ bản game Pygbag.
 
 ## Cập nhật qua Pull Request

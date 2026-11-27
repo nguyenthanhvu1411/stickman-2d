@@ -51,9 +51,10 @@ def stroke(canvas, points, color=INK, width=13):
     canvas.drawPath(path, line)
 
 
-def draw_scene(canvas, frame, title_font):
+def draw_scene(canvas, frame, title_font, title=TITLE, trigger=1.2, pose="point",
+               theme="whiteboard"):
     time = frame / FPS
-    canvas.clear(0xFFF5F0E7)
+    canvas.clear(0xFFF5F0E7 if theme == "whiteboard" else 0xFFDDEDE8)
     canvas.drawRect(skia.Rect.MakeLTRB(0, 551, WIDTH, HEIGHT), paint(0xFFEAE2D5))
     stroke(canvas, [(0, 551), (WIDTH, 551)], 0xFFDCD2C3, 2)
     rounded(canvas, (465, 143, 1161, 513), 26, 0xFFD9D0C1)
@@ -66,7 +67,7 @@ def draw_scene(canvas, frame, title_font):
     canvas.drawOval(skia.Rect.MakeLTRB(170, 544, 406, 585), paint(0xFFD6CCBC))
     bob = 5 * math.sin(time * math.tau / 2.1)
     reach = min(max((time - 0.25) / 0.85, 0), 1)
-    reach = reach * reach * (3 - 2 * reach)
+    reach = reach * reach * (3 - 2 * reach) if pose == "point" else 0
     shoulder = (280, 350 + bob)
     stroke(canvas, [(280, 464 + bob), (230, 523), (206, 557)])
     stroke(canvas, [(280, 464 + bob), (327, 524), (357, 557)])
@@ -86,15 +87,17 @@ def draw_scene(canvas, frame, title_font):
             canvas.drawCircle(x, 257 + bob, 4.5, paint(INK))
     stroke(canvas, [(278, 280 + bob), (286, 286 + bob), (297, 280 + bob)], width=4)
 
-    if time >= 1.2:
-        progress = min((time - 1.2) / 0.55, 1)
+    if title and time >= trigger:
+        progress = min((time - trigger) / 0.55, 1)
         remaining = progress - 1
         scale = 0.55 + 0.45 * (1 + 2.8 * remaining**3 + 1.8 * remaining**2)
         canvas.save()
         canvas.translate(800, 302)
         canvas.scale(scale, scale)
         rounded(canvas, (-277, -70, 277, 70), 24, 0xFFE5F5F1)
-        canvas.drawString(TITLE, -title_font.measureText(TITLE) / 2, 18, title_font, paint(INK))
+        text_width = title_font.measureText(title)
+        canvas.scale(min(1, 500 / max(1, text_width)), 1)
+        canvas.drawString(title, -text_width / 2, 18, title_font, paint(INK))
         canvas.restore()
         rounded(canvas, (730, 399, 870, 407), 4, TEAL)
         for start, end in [((545, 213), (530, 195)), ((1057, 213), (1073, 195))]:
